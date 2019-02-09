@@ -1,4 +1,5 @@
 import math
+import time
 import wpilib
 import ctre 
 from subsystems.drivetrain import Drivetrain
@@ -59,28 +60,23 @@ ELEVATOR_ID_SLAVE = 8
 #ELEVATOR PID IDs
 MIN_ELEVATOR_RANGE = 0
 MAX_ELEVATOR_RANGE = 200
+#Match time for timer
 
-#ELEVATOR STOPS
-LOW_HATCH_VALUE = 0
-LOW_CARGO_VALUE = 500
-MEDIUM_HATCH_VALUE = 1000
-MEDIUM_CARGO_VALUE = 1500
-HIGH_HATCH_VALUE = 2000
-HIGH_CARGO_VALUE = 2500
+#Teleop duration
+TELEOP_DURATION_SECONDS = 150
 
 class MyRobot(wpilib.IterativeRobot):
     def robotInit(self):
         #assigns driver as controller 0 and operator as controller 1
         self.driver = wpilib.XboxController(0)
         self.operator = wpilib.XboxController(1)
-        self.elevatorController = ElevatorController(self.operator, self.logger)
 
         #GYRO
         self.gyro = wpilib.AnalogGyro(1)
 
         #DRIVETRAIN
-        left = createMasterAndSlaves(LEFT_MASTER_ID, LEFT_SLAVE_1_ID, LEFT_SLAVE_2_ID)
-        right = createMasterAndSlaves(RIGHT_MASTER_ID, RIGHT_SLAVE_1_ID, RIGHT_SLAVE_2_ID)
+        left = createMasterAndSlaves(LEFT_MASTER_ID, LEFT_SLAVE_1_ID)
+        right = createMasterAndSlaves(RIGHT_MASTER_ID, RIGHT_SLAVE_1_ID)
         self.drivetrain = Drivetrain(left, right, self.gyro)
 
         #HATCH GRABBER
@@ -113,7 +109,9 @@ class MyRobot(wpilib.IterativeRobot):
         self.encoder = fakeEncoder()
         
         self.command = elevatorAttendant(self.encoder, 0, 100, -1, 1)
-
+        #time
+        self.timer = wpilib.Timer()
+        self.loops = 0
 
     def robotPeriodic(self):
         pass
@@ -122,6 +120,14 @@ class MyRobot(wpilib.IterativeRobot):
         """Executed at the start of teleop mode"""
         self.pistons_activated = False
         self.forward = 0
+        self.matchtimer = MatchTimer(TELEOP_DURATION_SECONDS)
+        self.loops = 0
+        self.timer.reset()
+        self.timer.start()
+
+        
+            
+        
     def teleopPeriodic(self):
         #ARCADE DRIVE CONTROL
         deadzone_value = 0.2
@@ -147,13 +153,38 @@ class MyRobot(wpilib.IterativeRobot):
         self.drivetrain.arcade_drive(self.forward, rotation_value)
 
         #ELEVATOR CONTROL
-        (elevateToHeight, setPoint) = self.elevatorController.getOperation()
-        if elevateToHeight:
-            self.command.setSetpoint(setPoint)
-
+        elevateToHeight = False
 
         #If proximity sensor = 0
             #self.encoder.reset()
+
+        
+        if (self.operator.getAButton() and (self.operator.getTriggerAxis(self.LEFT) > -0.9 and not (self.operator.getTriggerAxis(self.LEFT) == 0))):
+            self.command.setSetpoint(LOW_CARGO_VALUE)
+            elevateToHeight = True
+
+            print("low cargo value")
+
+        elif self.operator.getAButton():
+            self.command.setSetpoint(LOW_HATCH_VALUE)
+            elevateToHeight = True
+
+        elif (self.operator.getBButton() and (self.operator.getTriggerAxis(self.LEFT) > -0.9 and not (self.operator.getTriggerAxis(self.LEFT) == 0))):
+            self.command.setSetpoint(MEDIUM_CARGO_VALUE)
+            elevateToHeight = True
+
+        elif self.operator.getBButton():
+            self.command.setSetpoint(MEDIUM_HATCH_VALUE)
+            elevateToHeight = True
+        
+        elif self.operator.getXButton():
+            self.command.setSetpoint(HIGH_CARGO_VALUE)
+            elevateToHeight = True
+
+        elif (self.operator.getXButton() and (self.operator.getTriggerAxis(self.LEFT) > -0.9 and not (self.operator.getTriggerAxis(self.LEFT) == 0))):
+            self.command.setSetpoint(HIGH_HATCH_VALUE)
+            elevateToHeight = True
+        
 
         '''
         Guitar Hero controls
@@ -165,31 +196,90 @@ class MyRobot(wpilib.IterativeRobot):
         5: Hatch Panel grab (piston out). 5+wammy: Hatch Panel release (piston in). (5, z!=0)
         Start: Activate end game with Driver approval (8)
         '''
-
+        
+        #timer
+        self.loops += 1
+        if self.timer.hasPeriodPassed(1):
+            self.logger.info("%d is time up", self.matchtimer.AreWeThereYet())
+            self.loops = 0
+        
         #END GAME 
 
         activate_pistons = self.operator.getStartButton() and self.driver.getStartButton()
-        release_pistons = self.operator.getBackButton() and self.driver.getStartButton()
+        release_pistons = self.operator.getBackButton() and self.driver.gettStartButton()
 
         if activate_pistons:
             self.lift.raise_up()
         if release_pistons:
             self.lift.lower_down()
 
-def createMasterAndSlaves(MASTER, slave1, slave2):
+        #if self.matchtimer.AreWeThereYet():
+        #    self.lift.raise_all()
+             #do something special
+    
+    def autonomousInit(self):
+        print("AUTONOMOUS BEGIN!")
+        self.matchtimer = MatchTimer(TELEOP_DURATION_SECONDS)
+        self.loops = 0
+        self.timer.reset()
+        self.timer.start()
+        #self.auton = autonomous.straight_ahead(self.drivetrain)
+
+    def autonomousPeriodic(self):
+       
+        
+        if self.matchtimer.AreWeThereYet() <= (140): 
+            self.drivetrain.arcade_drive(-0.5, 0.0)
+        else:
+            self.drivetrain.arcade_drive(0.3, 0.0)
+        return
+        try:
+            next(self.auton)
+            # print("We are at autonomous periodic")
+        except StopIteration:
+            self.drivetrain.stop()
+
+
+class MatchTimer:
+
+    def __init__(self, duration):
+        self.starttime = time.time()
+        self.duration = TELEOP_DURATION_SECONDS
+
+    def endTime(self): 
+        self.end_time = (self.starttime + self.duration)
+        return (self.end_time)
+    def AreWeThereYet(self):
+        now = time.time()
+        if self.endTime() >= now:
+            time_left = (self.endTime() - now)
+            return (time_left)
+        else:
+            return(0)
+        
+def createMasterAndSlaves(MASTER, slave1, slave2=None):
     '''
     First ID must be MASTER, Second ID must be slave TALON, Third ID must be slave VICTOR
     This assumes that the left and right sides are the same, two talons and one victor. A talon must be the master.
     '''
-    master_talon = ctre.WPI_TalonSRX(MASTER)
+    if slave2 is None:
+        master_talon = ctre.WPI_TalonSRX(MASTER)
+        
+        slave_talon = ctre.WPI_TalonSRX(slave1)
+        
+        slave_talon.follow(master_talon)
+        
+        return master_talon
+    else:
+        master_talon = ctre.WPI_TalonSRX(MASTER)
 
-    slave_talon = ctre.WPI_TalonSRX(slave1)
-    slave_victor = ctre.victorspx.VictorSPX(slave2)
+        slave_talon = ctre.WPI_TalonSRX(slave1)
+        slave_victor = ctre.victorspx.VictorSPX(slave2)
 
-    slave_talon.follow(master_talon)
-    slave_victor.follow(master_talon)
+        slave_talon.follow(master_talon)
+        slave_victor.follow(master_talon)
 
-    return master_talon
+        return master_talon
 
 class elevatorAttendant:
     def __init__(self, encoder, lowInput, highInput, lowOutput, highOutput):
@@ -252,45 +342,6 @@ def sign(number):
     else:
         return -1
 
-class ElevatorController:
-
-    def __init__(self, controller, logger = None):
-        self.controller = controller
-        self.logger = logger
-    def getOperation(self):
-        
-        whammyBarPressed = (self.controller.getTriggerAxis(LEFT) > -0.9 and not (self.controller.getTriggerAxis(LEFT) == 0))
-        if self.logger is not None:
-            if whammyBarPressed:
-                self.logger.info("whammy bar has been pressed")
-        if self.controller.getAButton():
-            if whammyBarPressed:
-                setPoint = LOW_CARGO_VALUE
-            else:
-                setPoint = LOW_HATCH_VALUE
-            if self.logger is not None:
-                self.logger.info("button A has been pressed")
-            runElevator = True
-
-        elif self.controller.getBButton():
-            if whammyBarPressed:
-                setPoint = MEDIUM_CARGO_VALUE
-            else:
-                setPoint = MEDIUM_HATCH_VALUE
-            runElevator = True
-
-        elif self.controller.getXButton():
-            if whammyBarPressed:
-                setPoint = HIGH_CARGO_VALUE
-            else:
-                setPoint = HIGH_HATCH_VALUE
-            runElevator = True
-        
-        else:
-            setPoint = 0
-            runElevator = False
-        
-        return (runElevator, setPoint)
-
 if __name__ == "__main__":
     wpilib.run(MyRobot)
+    
