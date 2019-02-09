@@ -12,8 +12,13 @@ try:
 except ModuleNotFoundError as e:
     print("Missing navx.  Carry on!")
     MISSING_NAVX = True
-    
-from hal_impl.data import hal_data
+
+try:
+    from hal_impl.data import hal_data
+    MISSING_HAL = False
+except ModuleNotFoundError as e:
+    print("Missing hal_data. Ignore.")
+    MISSING_HAL = True
 
 #OUR ROBOT SYSTEMS AND LIBRARIES
 from subsystems.drivetrain import Drivetrain
@@ -68,7 +73,7 @@ class MyRobot(wpilib.TimedRobot):
 
         #DRIVETRAIN
         left = createMasterAndSlaves(LEFT_MASTER_ID, LEFT_SLAVE_1_ID, LEFT_SLAVE_2_ID)
-        right = createMasterAndSlaves(RIGHT_MASTER_ID, RIGHT_SLAVE_1_ID, RIGHT_SLAVE_2_ID)
+        right = createTalonAndSlaves(RIGHT_MASTER_ID, RIGHT_SLAVE_1_ID, RIGHT_SLAVE_2_ID)
         self.drivetrain = Drivetrain(left, right, self.gyro)
 
         #HATCH GRABBER
@@ -202,11 +207,38 @@ def createMasterAndSlaves(MASTER, slave1, slave2=None):
   if slave2 is not None:
     slave_victor = ctre.victorspx.VictorSPX(slave2)
     slave_victor.follow(master_talon)
+    
+  return master_talon
+
+def createTalonAndSlaves(MASTER, slave1, slave2=None):
+  '''
+  First ID must be MASTER, Second ID must be slave TALON, Third ID must be slave VICTOR
+  This assumes that the left and right sides are the same, two talons and one victor. A talon must be the master.
+  '''
+  if slave2 is None:
+    master_talon = ctre.WPI_TalonSRX(MASTER)
+    
+    slave_talon = ctre.WPI_TalonSRX(slave1)
+    
+    slave_talon.follow(master_talon)
+    
+    return master_talon
+
+  else:
+    master_talon = ctre.WPI_TalonSRX(MASTER)
+    slave_talon = ctre.WPI_TalonSRX(slave1)
+    slave_talon_2 = ctre.WPI_TalonSRX(slave2)
+    slave_talon.follow(master_talon)
+    slave_talon_2.follow(master_talon)
+
     return master_talon
 
 class FakeEncoder:
     def pidGet(self):
-        return hal_data['encoder'][0]['value']
+        if MISSIN_HAL:
+            return 0
+        else:
+            return hal_data['encoder'][0]['value']
 
     def getPIDSourceType(self):
         return wpilib.interfaces.pidsource.PIDSource.PIDSourceType.kDisplacement

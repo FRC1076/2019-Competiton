@@ -15,6 +15,7 @@ HIGH_CARGO_VALUE = 2500
 
 LEFT_CONTROLLER_HAND = wpilib.interfaces.GenericHID.Hand.kLeft
 RIGHT_CONTROLLER_HAND = wpilib.interfaces.GenericHID.Hand.kRight
+
 class Elevator:
     def __init__(self, motor, encoder_motor=None):
         self.encoder_motor = encoder_motor
@@ -65,7 +66,7 @@ class ElevatorController:
         whammyBarPressed = (self.controller.getTriggerAxis(LEFT_CONTROLLER_HAND) > -0.9 and not (self.controller.getTriggerAxis(LEFT_CONTROLLER_HAND) == 0))
         if self.logger is not None:
             if whammyBarPressed:
-                self.logger.info("whammy bar has been pressed")
+                self.logger.info("whammy bar has been pressed with value %f ", (self.controller.getTriggerAxis(LEFT_CONTROLLER_HAND)))
         if self.controller.getAButton():
             if whammyBarPressed:
                 setPoint = LOW_CARGO_VALUE
