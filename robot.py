@@ -196,13 +196,13 @@ class MyRobot(wpilib.TimedRobot):
             self.lift.lower_all()
 
 def createMasterAndSlaves(MASTER, slave1, slave2=None):
-  '''
-  First ID must be MASTER, Second ID must be slave TALON, Third ID must be slave VICTOR
-  This assumes that the left and right sides are the same, two talons and one victor. A talon must be the master.
-  '''
-  master_talon = ctre.WPI_TalonSRX(MASTER)
-  slave_talon = ctre.WPI_TalonSRX(slave1)
-  slave_talon.follow(master_talon)
+    '''
+    First ID must be MASTER, Second ID must be slave TALON, Third ID must be slave VICTOR
+    This assumes that the left and right sides are the same, two talons and one victor. A talon must be the master.
+    '''
+    master_talon = ctre.WPI_TalonSRX(MASTER)
+    slave_talon = ctre.WPI_TalonSRX(slave1)
+    slave_talon.follow(master_talon)
     
   if slave2 is not None:
     slave_victor = ctre.victorspx.VictorSPX(slave2)
@@ -211,31 +211,22 @@ def createMasterAndSlaves(MASTER, slave1, slave2=None):
   return master_talon
 
 def createTalonAndSlaves(MASTER, slave1, slave2=None):
-  '''
-  First ID must be MASTER, Second ID must be slave TALON, Third ID must be slave VICTOR
-  This assumes that the left and right sides are the same, two talons and one victor. A talon must be the master.
-  '''
-  if slave2 is None:
-    master_talon = ctre.WPI_TalonSRX(MASTER)
-    
-    slave_talon = ctre.WPI_TalonSRX(slave1)
-    
-    slave_talon.follow(master_talon)
-    
-    return master_talon
-
-  else:
+    '''
+    First ID must be MASTER, Second ID must be slave TALON, Third ID must be slave TALON
+    This assumes that the side is all talons. A talon must be the master.
+    '''
     master_talon = ctre.WPI_TalonSRX(MASTER)
     slave_talon = ctre.WPI_TalonSRX(slave1)
-    slave_talon_2 = ctre.WPI_TalonSRX(slave2)
     slave_talon.follow(master_talon)
-    slave_talon_2.follow(master_talon)
-
+    
+    if slave2 is not None:
+        slave_talon2 = ctre.WPI_TalonSRX(slave2)
+        slave_talon2.follow(master_talon)
     return master_talon
 
 class FakeEncoder:
     def pidGet(self):
-        if MISSIN_HAL:
+        if MISSING_HAL:
             return 0
         else:
             return hal_data['encoder'][0]['value']
