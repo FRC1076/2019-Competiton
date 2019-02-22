@@ -230,11 +230,13 @@ class MyRobot(wpilib.TimedRobot):
         release_pistons = self.driver.getBackButton() 
 
         if activate_pistons:
-            self.lift.raise_all
+            self.lift.lower_center()
+            self.lift.lower_back()
             self.logger.info("Raising all!")
 
         elif release_pistons:
-            self.lift.lower_all
+            self.lift.raise_back()
+            self.lift.raise_center()
             self.logger.info("Lower all!")
 
 
