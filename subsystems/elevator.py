@@ -13,6 +13,11 @@ MEDIUM_CARGO_VALUE = 1500
 HIGH_HATCH_VALUE = 2000
 HIGH_CARGO_VALUE = 2500
 
+#elevator speeds
+Go_up_speed = 1
+go_down_speed = -0.5
+stop_speed = 0
+
 
 LEFT_CONTROLLER_HAND = wpilib.interfaces.GenericHID.Hand.kLeft
 RIGHT_CONTROLLER_HAND = wpilib.interfaces.GenericHID.Hand.kRight
