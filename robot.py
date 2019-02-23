@@ -64,8 +64,9 @@ PISTON_EXTEND_ID = 4
 PISTON_RETRACT_ID = 5
 
 #hatch 
-RETRACT_ID = 6
-EXTEND_ID = 7
+EXTEND_ID = 6
+RETRACT_ID = 7
+
 
 '''
 Raw Axes
