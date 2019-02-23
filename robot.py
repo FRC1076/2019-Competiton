@@ -243,14 +243,19 @@ class MyRobot(wpilib.TimedRobot):
         # if release_pistons:
         #     self.lift.lower_all()
     def autonomousInit(self):
+        self.autonTickCounter = 0
         self.teleopInit()
-        print("auton init")
-
-    def autonomousPeriodic(self):
-        self.teleopPeriodic()
-        print("auton periodic")
         
 
+    def autonomousPeriodic(self): 
+        self.teleopPeriodic()
+        self.autonTickCounter = (self.autonTickCounter + 1)
+        if self.autonTickCounter >= 50:
+            self.logger.info("auton periodic")
+            self.autonTickCounter = 0
+        else:
+            return
+            
 def createMasterAndSlaves(MASTER, slave1, slave2):
     '''
     First ID must be MASTER, Second ID must be slave TALON, Third ID must be slave VICTOR
