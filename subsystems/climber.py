@@ -18,13 +18,51 @@ class Climber:
         self.gyro = gyro
 
         self.logger = logger
+        self.tilt_thread = None
 
         self.rollTarget = 0
         self.pitchTarget = 0
 
-        self.thisLeanSequence = [ (0,0) , (3,-10) , (3,-20) ]
-        self.leanSequence = [0,0]
+        #self.leanSequence = [ (0,0) , (3,10) , (3,20) ]
+        self.leanSequence = [ (0,0) ]
+        self.thisLeanSequence = [(0,0)]
+  
+    def balanceMeToo(self): #-1 is open, 1 is close
 
+        if self.tilt_thread is None:
+            self.tilt_thread = Thread(target=Climber.leanTimed, args=(self,))
+            self.tilt_thread.start()
+
+        if self.roll_offset is None:
+            self.roll_offset = self.gyro.getRoll()
+        if self.pitch_offset is None:
+            self.pitch_offset = self.gyro.getPitch()
+
+        roll_value = self.gyro.getRoll() - self.roll_offset
+        pitch_value = self.gyro.getPitch() - self.pitch_offset
+
+        if abs(roll_value - self.rollTarget) > ROLL_TOL or abs(pitch_value - self.pitchTarget) > PITCH_TOL:
+            if roll_value < self.rollTarget: #left side high
+                if pitch_value < self.pitchTarget: #back high
+                    self.servo1.stopMotor()      
+                else: #front high
+                    self.servo3.stopMotor()
+            else: #right side high
+                if pitch_value < self.pitchTarget: #back high
+                    self.servo0.stopMotor()
+                else: # front high
+                    self.servo2.stopMotor()
+        else:
+            self.servo0.turn(-1)
+            self.servo1.turn(-1)
+            self.servo2.turn(-1)
+            self.servo3.turn(-1)
+
+    def reset(self):
+        self.roll_offset = None
+        self.pitch_offset = None
+
+        self.stopAll()
 
     def balanceMe(self):
 
@@ -33,7 +71,7 @@ class Climber:
 
         thr = Thread(target=Climber.leanTimed, args=(self,))
         thr.start()
-
+        
         if abs(roll_value - self.rollTarget) > ROLL_TOL or abs(pitch_value - self.pitchTarget) > PITCH_TOL:
             if roll_value < self.rollTarget: #left side high
                 if pitch_value < self.pitchTarget: #back high

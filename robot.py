@@ -76,10 +76,10 @@ RETRACT_ID = 6
 EXTEND_ID = 7
 
 #servo
-SERVO0_CHANNEL = 0 #front left
-SERVO1_CHANNEL = 1 #front right
-SERVO2_CHANNEL = 2 #back left
-SERVO3_CHANNEL = 3 #back right
+SERVO0_CHANNEL = 0 
+SERVO1_CHANNEL = 1 
+SERVO2_CHANNEL = 2 
+SERVO3_CHANNEL = 3 
 
 
 # down sonar PIN numbers
@@ -165,10 +165,11 @@ class MyRobot(wpilib.TimedRobot):
         self.elevatorHeightSensor = SonarSensor('10.10.76.11', 5811, logger=self.logger)
         self.elevatorAttendant = ElevatorAttendant(self.elevatorHeightSensor, 0, 200, -0.5, 1.0)
 
-        self.visionAttendant = VisionAttendant(self.visionSensor)
+        #self.visionAttendant = VisionAttendant(self.visionSensor)
 
         self.autoBalancing = False
 
+        #self.pdp_small = wpilib.pdb
     def robotPeriodic(self):
         # if self.timer % 50 == 0:
         #     print("NavX Gyro Roll", self.gyro.getRoll())
@@ -178,6 +179,8 @@ class MyRobot(wpilib.TimedRobot):
         """Executed at the start of teleop mode"""
         self.forward = 0
         self.downSonar.ping()
+        
+        self.climber.reset()
         
     def teleopPeriodic(self):
 
@@ -322,27 +325,36 @@ class MyRobot(wpilib.TimedRobot):
 
         #The front (center) pistons will fire 0.25 seconds after the back pistons have been fired.
         if activate_pistons:
-            self.autoBalancing = True
-            self.lift.raise_back()
-            #time.sleep(0.25)
-            self.lift.raise_center()
+            #self.autoBalancing = True
+            self.lift.raise_all()
             self.logger.info("Raising all!")
         else:
             if release_center_pistons:
                 self.autoBalancing = False
                 self.lift.lower_center()
-            if release_back_pistons:
+            elif release_back_pistons:
                 self.autoBalancing = False
                 self.lift.lower_back()
+            # elif self.operator.getAButton():
+            #     self.autoBalancing = False
 
+        if self.operator.getAButton():
+            self.autoBalancing = True
+        if self.operator.getAButtonReleased():
+            self.autoBalancing = False
+            
         if self.autoBalancing == True:
             self.climber.balanceMe()
+        if self.autoBalancing == False:
+            self.climber.stopAll()
 
         if self.driver.getXButton():
             self.climber.closeAllValves()
         if self.driver.getAButton():
-            self.climber.openAllValves
+            self.climber.openAllValves()
         if self.driver.getXButtonReleased():
+            self.climber.stopAll()
+        if self.driver.getAButtonReleased():
             self.climber.stopAll()
 
     def autonomousInit(self):
@@ -352,8 +364,45 @@ class MyRobot(wpilib.TimedRobot):
         print("auton init")
 
     def autonomousPeriodic(self):
-        self.teleopPeriodic()
-        print("auton periodic")
+        # self.teleopPeriodic()
+        # print("auton periodic")
+        if self.driver.getTriggerAxis(LEFT_CONTROLLER_HAND):
+            turn_value = -1
+        else:
+            turn_value = 1
+
+        #If left trigger held, open valves
+        if self.driver.getAButton(): 
+            self.servo0.turn(turn_value)
+        if self.driver.getAButtonReleased():
+            self.servo0.stopMotor()
+
+        if self.driver.getXButton():
+            self.servo1.turn(turn_value)
+        if self.driver.getXButtonReleased():
+            self.servo1.stopMotor()
+
+        if self.driver.getYButton():
+            self.servo2.turn(turn_value)
+        if self.driver.getYButtonReleased():
+            self.servo2.stopMotor()
+
+        if self.driver.getBButton():
+            self.servo3.turn(turn_value)
+        if self.driver.getBButtonReleased():
+            self.servo3.stopMotor()
+       
+        if self.driver.getStartButton():
+            self.climber.openAllValves()
+        if self.driver.getBackButton():
+            self.climber.closeAllValves()
+
+        if self.driver.getStartButtonReleased():
+            self.climber.stopAll()
+        if self.driver.getBackButtonReleased():
+            self.climber.stopAll()
+
+
 
 def createTalonAndSlaves(MASTER, slave1, slave2=None):
     '''
